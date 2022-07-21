@@ -1,0 +1,15 @@
+{
+  "description": "Take your daily mixes, put them into a single playlist, and shuffle them. That's it.",
+  "scripts": {
+    "serve": "node src/get-token",
+    "shuffle": "node src/shuffle-playlist"
+  },
+  "author": "AlbinoDrought",
+  "license": "CC0",
+  "dependencies": {
+    "express": "^4.16.0",
+    "querystring": "^0.2.0",
+    "request": "^2.83.0",
+    "spotify-web-api-node": "^5.0.2"
+  }
+}
