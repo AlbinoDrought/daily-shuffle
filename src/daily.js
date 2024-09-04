@@ -1,5 +1,10 @@
 module.exports = {
-  findShuffledDailyMixPlaylist: async (spotifyApi) => {
+  /**
+   * @param {import('spotify-web-api-node')} spotifyApi 
+   * @param {string} name 
+   * @returns {Promise<{ id: string }|null}>
+   */
+  findPlaylistByName: async (spotifyApi, name) => {
     const user = await spotifyApi.getMe();
 
     const limit = 50;
@@ -13,14 +18,14 @@ module.exports = {
       });
       offset += limit;
   
-      const shuffledDailyMixPlaylist = resp.body.items
+      const playlist = resp.body.items
         .find((item) => {
-          return item.name === 'Shuffled Daily Mix'
+          return item.name === name
             && item.owner.uri === user.body.uri;
         });
 
-      if (shuffledDailyMixPlaylist) {
-        return shuffledDailyMixPlaylist;
+      if (playlist) {
+        return playlist;
       }
   
       iterations++;
@@ -29,6 +34,10 @@ module.exports = {
     return null;
   },
 
+  /**
+   * @param {import('spotify-web-api-node')} spotifyApi 
+   * @returns {Promise<{ id: string }[]}>
+   */
   findDailyMixPlaylists: async (spotifyApi) => {
     const dailyMixPlaylists = [];
     const limit = 50;
@@ -48,7 +57,10 @@ module.exports = {
             && item.owner.uri === 'spotify:user:spotify';
         })
         .forEach((playlist) => {
-          dailyMixPlaylists.push(playlist);
+          // for some reason I'm getting duplicates of daily mix 2, 2024-09-03
+          if (!dailyMixPlaylists.find(p => p.id === playlist.id)) {
+            dailyMixPlaylists.push(playlist);
+          }
         });
   
       iterations++;
@@ -57,6 +69,11 @@ module.exports = {
     return dailyMixPlaylists;
   },
 
+  /**
+   * @param {import('spotify-web-api-node')} spotifyApi 
+   * @param {string} playlistID 
+   * @returns {Promise<{ id: string }[]>}
+   */
   findPlaylistSongs: async (spotifyApi, playlistID) => {
     const allSongURIs = [];
 
@@ -83,6 +100,10 @@ module.exports = {
     return allSongURIs;
   },
 
+  /**
+   * @param {Array} things 
+   * @returns {Array}
+   */
   shuffle: (things) => {
     return things
       .map((thing) => ({ thing: thing, sort: Math.random() }))

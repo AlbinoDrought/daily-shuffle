@@ -21,6 +21,40 @@ if (!config.refreshToken) {
 
 spotifyApi.setRefreshToken(config.refreshToken);
 
+let findPlaylists;
+if (config.mode === 'all-daily') {
+  /**
+   * @return {Promise<string[]>}
+   */
+  findPlaylists = async () => {
+    const dailyMixPlaylists = await daily.findDailyMixPlaylists(spotifyApi);
+    if (dailyMixPlaylists.length <= 0) {
+      console.error('You must favorite/like/follow your Daily Mix playlists for them to show through API access! 0 found');
+      process.exit(1);
+    }
+    return dailyMixPlaylists.map(p => p.id);
+  };
+} else if (config.mode === 'specified') {
+  /**
+   * @return {Promise<string[]>}
+   */
+  findPlaylists = async () => {
+    const playlists = config.playlistIDs.slice();
+    if (playlists.length <= 0) {
+      console.error('When using "specified" mode, you must specify at least one playlist ID with DS_PLAYLIST_IDS');
+      process.exit(1);
+    }
+    return playlists;
+  };
+} else {
+  console.error(`Unsupported DS_MODE: ${config.mode}`);
+  console.error('Try one of: all-daily, specified');
+  process.exit(1);
+}
+
+const playlistName = config.playlistName || 'Shuffled Daily Mix';
+const playlistDescription = config.playlistDescription || 'Your shuffled daily mix!';
+
 (async () => {
   console.log('Fetching new access token...');
   spotifyApi.setAccessToken(
@@ -28,42 +62,50 @@ spotifyApi.setRefreshToken(config.refreshToken);
   );
   console.log('Fetched!');
 
-  console.log('Looking for "Daily Mix" playlists...');
-  const dailyMixPlaylists = await daily.findDailyMixPlaylists(spotifyApi);
+  console.log('Looking for playlists...');
+  const playlistIDs = await findPlaylists();
+  playlistIDs.sort();
 
-  if (dailyMixPlaylists.length <= 0) {
-    console.error('You must favorite/like/follow your Daily Mix playlists for them to show through API access! 0 found');
-    process.exit(1);
-  }
+  console.log(`Found ${playlistIDs.length}: ${playlistIDs.join(', ')}`);
 
-  console.log('Found ' + dailyMixPlaylists.length);
-
-  console.log('Looking at Daily Mix songs...');
-  const dailyMixSongsWrapped = await Promise.all(
-    dailyMixPlaylists.map((p) => daily.findPlaylistSongs(spotifyApi, p.id))
+  console.log('Looking at playlist songs...');
+  const songsWrapped = await Promise.all(
+    playlistIDs.map((playlistID) => daily.findPlaylistSongs(spotifyApi, playlistID))
   );
-  let dailyMixSongs = [];
-  dailyMixSongsWrapped.forEach((dms) => {
-    dailyMixSongs = dailyMixSongs.concat(dms);
+  let songs = [];
+  songsWrapped.forEach((dms) => {
+    songs = songs.concat(dms);
   });
-  dailyMixSongs = daily.shuffle(dailyMixSongs);
-  console.log('Found ' + dailyMixSongs.length);
+  songs = daily.shuffle(songs);
 
-  console.log('Looking for existing "Shuffled Daily Mix" playlist...');
-  let playlist = await daily.findShuffledDailyMixPlaylist(spotifyApi);
+  const dedupedSongs = [...new Set(songs)];
+  const dupes = songs.length - dedupedSongs.length;
+
+  songs = dedupedSongs;
+  console.log(`Found ${songs.length} songs (${dupes} duplicates)`);
+
+  console.log(`Looking for existing "${playlistName}" playlist...`);
+  let playlist = await daily.findPlaylistByName(spotifyApi, playlistName);
   if (!playlist) {
-      console.log('Creating "Shuffled Daily Mix" playlist...');
-      playlist = (await spotifyApi.createPlaylist('Shuffled Daily Mix', {
+      console.log(`Creating "${playlistName}" playlist...`);
+      playlist = (await spotifyApi.createPlaylist(playlistName, {
       collaborative: false,
-      description: 'Your shuffled daily mix!',
+      description: playlistDescription,
       public: false,
     })).body;
   }
 
-  console.log('Updating "Shuffled Daily Mix" playlist...');
-  await spotifyApi.replaceTracksInPlaylist(playlist.id, []);
-  for (let i = 0; i < dailyMixSongs.length; i += 50) {
-    await spotifyApi.addTracksToPlaylist(playlist.id, dailyMixSongs.slice(i, i+50));
+  console.log(`Updating "${playlistName}" playlist...`);
+  const songsPerLoop = 100;
+  for (let i = 0; i < songs.length; i += songsPerLoop) {
+    const songsPart = songs.slice(i, i+songsPerLoop);
+    if (i === 0) {
+      // remove all other songs from the list, replace with our songs
+      // by passing some songs here, we prevent the playlist from ever being completely emptied
+      await spotifyApi.replaceTracksInPlaylist(playlist.id, songsPart);
+    } else {
+      await spotifyApi.addTracksToPlaylist(playlist.id, songsPart);
+    }
   }
 
   console.log('Done!');
