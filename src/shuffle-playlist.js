@@ -72,11 +72,20 @@ const playlistDescription = config.playlistDescription || 'Your shuffled daily m
   const songsWrapped = await Promise.all(
     playlistIDs.map((playlistID) => daily.findPlaylistSongs(spotifyApi, playlistID))
   );
-  let songs = [];
-  songsWrapped.forEach((dms) => {
-    songs = songs.concat(dms);
-  });
-  songs = daily.shuffle(songs);
+
+  let songs;
+  if (config.playlistInterleave) {
+    const idxHalf = songsWrapped.length / 2;
+    const songsWrappedA = songsWrapped.slice(0, idxHalf);
+    const songsWrappedB = songsWrapped.slice(idxHalf);
+
+    songs = daily.interleave(
+      daily.shuffle(daily.concatMultiple(songsWrappedA)),
+      daily.shuffle(daily.concatMultiple(songsWrappedB)),
+    );
+  } else {
+    songs = daily.shuffle(daily.concatMultiple(songsWrapped));
+  }
 
   const dedupedSongs = [...new Set(songs)];
   const dupes = songs.length - dedupedSongs.length;

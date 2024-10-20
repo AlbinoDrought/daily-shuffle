@@ -101,13 +101,50 @@ module.exports = {
   },
 
   /**
-   * @param {Array} things 
-   * @returns {Array}
+   * @template T
+   * @param {Array<T>} things 
+   * @returns {Array<T>}
    */
   shuffle: (things) => {
     return things
       .map((thing) => ({ thing: thing, sort: Math.random() }))
       .sort((a, b) => a.sort - b.sort)
       .map((wrapped) => wrapped.thing);
+  },
+
+  /**
+   * Interleave `a` and `b`, returning an array where:
+   * [a[0], b[0], a[1], b[1], a[2], b[2], ...]
+   * 
+   * If the arrays are different lengths,
+   * interleaving will stop at the end of the shorter one
+   * and the longer one will be inserted as-is:
+   * [a[10], b[10], a[11], a[12], a[13], a[14], ...]
+   * 
+   * @template T
+   * @param {Array<T>} a 
+   * @param {Array<T>} b 
+   * @returns {Array<T>}
+   */
+  interleave: (a, b) => {
+    const things = [];
+    for (let i = 0; i < Math.max(a.length, b.length); i += 1) {
+      if (a.length > i) {
+        things.push(a[i]);
+      }
+      if (b.length > i) {
+        things.push(b[i]);
+      }
+    }
+    return things;
+  },
+
+  /**
+   * @template T
+   * @param {Array<Array<T>>} things 
+   * @returns {Array<T>}
+   */
+  concatMultiple: (things) => {
+    return [].concat(...things);
   },
 };
