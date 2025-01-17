@@ -35,3 +35,26 @@ Enjoy
 6. Set up that above command to run on some kind of schedule
 
 Enjoy
+
+## Workaround, inaccessible Daily Mix playlists
+
+You might get a 404 error when attempting to access your Daily Mix playlists over the Spotify Web API.
+
+Create an external command to retrieve them anyways. This is an exercise for the reader. Here's an example:
+
+```go
+package main
+
+func main() {
+  playlistIDs := strings.Split(",", os.Getenv("PLAYLIST_ID")) // base62 IDs separated by comma
+  for _, playlistID := range playlistIDs {
+    for _, trackInPlaylist := range getTracksInPlaylist(playlistID) {
+      println(trackInPlaylist) // spotify:track:base62id
+    }
+  }
+}
+```
+
+Specify this command and any required arguments in `DS_EXTERNAL_TOOL_COMMAND`, like `/path/to/command --foo=bar baz`.
+
+Then, when you run daily-shuffle, you will see the text `Looking at playlist songs using external tool...` instead of just `Looking at playlist songs...`

@@ -1,3 +1,5 @@
+const exec = require('child_process').exec;
+
 module.exports = {
   /**
    * @param {import('spotify-web-api-node')} spotifyApi 
@@ -98,6 +100,39 @@ module.exports = {
     } while (resp.body.items.length && (iterations < 1000));
 
     return allSongURIs;
+  },
+
+  /**
+   * @param {string} externalToolCommand
+   * @param {string[]} playlistIDs}
+   * @returns {Promise<{ id: string }[]>}
+   */
+  findPlaylistSongsBulkExternal: (externalToolCommand, playlistIDs) => {
+    return new Promise((resolve, reject) => {
+      let onResolve = () => {};
+
+      const childProcess = exec(externalToolCommand, {
+        env: {
+          'PLAYLIST_ID': playlistIDs.join(','),
+        },
+      }, (err, stdout) => {
+        onResolve();
+        if (err) {
+          reject(err);
+          return;
+        }
+        resolve(stdout.trim().split('\n'));
+      });
+
+      const timeout = setTimeout(
+        () => {
+          childProcess.kill();
+          reject(new Error('findPlaylistSongsBulkExternal exec timeout'));
+        },
+        30_000,
+      );
+      onResolve = () => clearTimeout(timeout);
+    });
   },
 
   /**

@@ -4,6 +4,8 @@ module.exports = {
   redirectUri: process.env.DS_REDIRECT_URI,
   refreshToken: process.env.DS_REFRESH_TOKEN,
 
+  findPlaylistSongsBulkExternalCommand: process.env.DS_EXTERNAL_TOOL_COMMAND,
+
   /**
    * One of:
    * - all-daily: shuffle all Spotify-created "Daily Mix" playlists

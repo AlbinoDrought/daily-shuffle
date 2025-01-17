@@ -68,10 +68,17 @@ const playlistDescription = config.playlistDescription || 'Your shuffled daily m
 
   console.log(`Found ${playlistIDs.length}: ${playlistIDs.join(', ')}`);
 
-  console.log('Looking at playlist songs...');
-  const songsWrapped = await Promise.all(
-    playlistIDs.map((playlistID) => daily.findPlaylistSongs(spotifyApi, playlistID))
-  );
+  let songsWrapped;
+
+  if (config.findPlaylistSongsBulkExternalCommand) {
+    console.log('Looking at playlist songs using external tool...');
+    songsWrapped = await daily.findPlaylistSongsBulkExternal(config.findPlaylistSongsBulkExternalCommand, playlistIDs);
+  } else {
+    console.log('Looking at playlist songs...');
+    songsWrapped = await Promise.all(
+      playlistIDs.map((playlistID) => daily.findPlaylistSongs(spotifyApi, playlistID))
+    );
+  }
 
   let songs;
   if (config.playlistInterleave) {
